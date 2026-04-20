@@ -15,7 +15,7 @@ def create_tables():
             category_id SERIAL PRIMARY KEY,
             category_name VARCHAR(100) NOT NULL,
             parent_category_id INTEGER NULL REFERENCES categories(category_id),
-            level SMALLINT NOT NULL CHECK (status_code IN (1, 2)),
+            level SMALLINT NOT NULL CHECK (level IN (1, 2)),
             created_at TIMESTAMP NOT NULL
         )
         """,
@@ -90,8 +90,8 @@ def create_tables():
         with psycopg2.connect(**config) as conn:
             with conn.cursor() as cur:
                 # execute the CREATE TABLE statement
-                #for command in commands:
-                cur.execute(commands)
+                for command in commands:
+                    cur.execute(command)
 
     except (psycopg2.DatabaseError, Exception) as error:
         print(error)
