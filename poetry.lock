@@ -19,6 +19,21 @@ tzdata = {version = "*", markers = "platform_system == \"Windows\""}
 tzdata = ["tzdata"]
 
 [[package]]
+name = "faker-ecommerce-provider"
+version = "1.1.0"
+description = "Generate realistic e-commerce test data: products, SKUs, orders, 20+ carriers, 20+ payment methods, coupons, reviews, and more"
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "faker_ecommerce_provider-1.1.0-py3-none-any.whl", hash = "sha256:2319a66ccf7200d05e631680829bae01d677d2a30ebcf32c5f628307565102bb"},
+    {file = "faker_ecommerce_provider-1.1.0.tar.gz", hash = "sha256:d16446cdf07d0f595f6fbe63bcf75a24b87d415359048dd1534d3c77d93c1b4c"},
+]
+
+[package.dependencies]
+faker = ">=18.0.0"
+
+[[package]]
 name = "numpy"
 version = "2.4.4"
 description = "Fundamental package for array computing in Python"
@@ -312,4 +327,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "afdfd53a1b461d2dfafef59a9a8219af253818a97d13f9a713e7675d3bcd8709"
+content-hash = "c10f8a75ea025e8d8507f89e50706e149d875f753f3ec79b44d22a7ccfb03b1c"
