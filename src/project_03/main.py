@@ -2,12 +2,12 @@ import psycopg2
 import io
 from config import load_config
 from generate_data import generate_promotions_data, generate_products_data, generate_brand_data, generate_sellers_data, generate_promotion_products_data, generate_categories_data
-from utils import create_cur, truncate_table, restart_sequence
+from utils import create_cur, truncate_table, resync_sequence
 
 def insert_data(data,table_name, column_name=''):
     # Refresh table if needed, else comment out the 2 funcs below
     truncate_table(table_name)
-    restart_sequence(table_name, column_name)
+    resync_sequence(table_name, column_name)
 
     buffer = io.StringIO()
     data.to_csv(buffer, index=False, header=False, na_rep=r'\N')
