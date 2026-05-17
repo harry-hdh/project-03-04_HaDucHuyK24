@@ -40,20 +40,22 @@ EXPLAIN SELECT order_id,
 	order_date,
 	seller_id,
 	row_number() OVER (ORDER BY date_trunc('day',order_date), seller_id) AS order_by
-FROM orders;
+FROM orders
+WHERE seller_id IN (3,5);
 ```
 **=> Results:**
 ```plantuml
-"WindowAgg  (cost=537175.36..604649.60 rows=2998856 width=32)"
+"WindowAgg  (cost=212237.21..239052.69 rows=1191800 width=32)"
 "  Window: w1 AS (ORDER BY (date_trunc('day'::text, order_date)), seller_id ROWS UNBOUNDED PRECEDING)"
-"  ->  Sort  (cost=537175.34..544672.48 rows=2998856 width=24)"
+"  ->  Sort  (cost=212237.19..215216.69 rows=1191800 width=24)"
 "        Sort Key: (date_trunc('day'::text, order_date)), seller_id"
-"        ->  Seq Scan on orders  (cost=0.00..91554.70 rows=2998856 width=24)"
+"        ->  Seq Scan on orders_old  (cost=0.00..67512.50 rows=1191800 width=24)"
+"              Filter: (seller_id = ANY ('{3,5}'::integer[]))"
 "JIT:"
-"  Functions: 5"
-"  Options: Inlining true, Optimization true, Expressions true, Deforming true"
+"  Functions: 7"
+"  Options: Inlining false, Optimization false, Expressions true, Deforming true"
 ```
-**Total rows: 3000000 | Query complete 00:00:08.916**
+**Total rows: 1199151 | Query complete 00:00:06.307**
 
 
 ### 3. Filter data in order_item by product_id
@@ -62,18 +64,22 @@ EXPLAIN SELECT order_id,
 	order_item_id,
 	product_id
 FROM order_items
+WHERE product_id IN (710,630,999)
 ORDER BY 3;
 ```
 **=> Results:**
 ```plantuml
-"Sort  (cost=1530097.70..1552599.52 rows=9000727 width=12)"
-"  Sort Key: product_id"
-"  ->  Seq Scan on order_items  (cost=0.00..182798.27 rows=9000727 width=12)"
+"Gather Merge  (cost=2451079.81..2503782.63 rows=452515 width=12)"
+"  Workers Planned: 2"
+"  ->  Sort  (cost=2450079.78..2450551.15 rows=188548 width=12)"
+"        Sort Key: product_id"
+"        ->  Parallel Seq Scan on order_items_old  (cost=0.00..2430335.17 rows=188548 width=12)"
+"              Filter: (product_id = ANY ('{710,630,999}'::integer[]))"
 "JIT:"
-"  Functions: 2"
+"  Functions: 4"
 "  Options: Inlining true, Optimization true, Expressions true, Deforming true"
 ```
-**Total rows: 9000674 | Query complete 00:00:15.454**
+**Total rows: 454594 | Query complete 00:04:26.226**
 
 
 ### 4. Find order with highest total_amount
@@ -386,52 +392,44 @@ CREATE INDEX idx_order_items_date ON order_items (order_date);
 
 ### 2. Orders filtered by seller and date
 ```plantuml
-"WindowAgg  (cost=525334.99..592834.97 rows=3000000 width=32)"
+"WindowAgg  (cost=209119.76..236061.49 rows=1197411 width=32)"
 "  Window: w1 AS (ORDER BY (date_trunc('day'::text, orders.order_date)), orders.seller_id ROWS UNBOUNDED PRECEDING)"
-"  ->  Sort  (cost=525334.97..532834.97 rows=3000000 width=24)"
+"  ->  Sort  (cost=209119.74..212113.27 rows=1197411 width=24)"
 "        Sort Key: (date_trunc('day'::text, orders.order_date)), orders.seller_id"
-"        ->  Append  (cost=0.00..79534.00 rows=3000000 width=24)"
-"              ->  Seq Scan on orders_202808 orders_1  (cost=0.00..21729.63 rows=1010130 width=24)"
-"              ->  Seq Scan on orders_202509 orders_2  (cost=0.00..21050.69 rows=978615 width=24)"
-"              ->  Seq Scan on orders_202510 orders_3  (cost=0.00..21753.69 rows=1011255 width=24)"
+"        ->  Append  (cost=4260.33..63672.70 rows=1197411 width=24)"
+"              ->  Bitmap Heap Scan on orders_202808 orders_1  (cost=4260.33..19393.30 rows=401998 width=24)"
+"                    Recheck Cond: (seller_id = ANY ('{3,5}'::integer[]))"
+"                    ->  Bitmap Index Scan on orders_202808_seller_id_idx  (cost=0.00..4159.84 rows=401998 width=0)"
+"                          Index Cond: (seller_id = ANY ('{3,5}'::integer[]))"
+"              ->  Bitmap Heap Scan on orders_202509 orders_2  (cost=4169.22..18887.29 rows=393338 width=24)"
+"                    Recheck Cond: (seller_id = ANY ('{3,5}'::integer[]))"
+"                    ->  Bitmap Index Scan on orders_202509_seller_id_idx  (cost=0.00..4070.88 rows=393338 width=0)"
+"                          Index Cond: (seller_id = ANY ('{3,5}'::integer[]))"
+"              ->  Bitmap Heap Scan on orders_202510 orders_3  (cost=4260.92..19405.05 rows=402075 width=24)"
+"                    Recheck Cond: (seller_id = ANY ('{3,5}'::integer[]))"
+"                    ->  Bitmap Index Scan on orders_202510_seller_id_idx  (cost=0.00..4160.41 rows=402075 width=0)"
+"                          Index Cond: (seller_id = ANY ('{3,5}'::integer[]))"
 "JIT:"
-"  Functions: 9"
-"  Options: Inlining true, Optimization true, Expressions true, Deforming true"
+"  Functions: 15"
+"  Options: Inlining false, Optimization false, Expressions true, Deforming true"
 ```
-**Total rows: 3000000 | Query complete 00:00:10.703**
+**Total rows: 1198772 | Query complete 00:00:13.352**
 
 ### 3. Filter data in order_item by product_id
 ```plantuml
-"Sort  (cost=2467949923.62..2467949924.12 rows=200 width=36)"
-"  Sort Key: (sum(oi.subtotal))"
-"  ->  Finalize GroupAggregate  (cost=2467949853.97..2467949915.97 rows=200 width=36)"
-"        Group Key: oi.order_id"
-"        ->  Gather Merge  (cost=2467949853.97..2467949909.87 rows=480 width=36)"
-"              Workers Planned: 2"
-"              ->  Sort  (cost=2467948853.94..2467948854.44 rows=200 width=36)"
-"                    Sort Key: oi.order_id"
-"                    ->  Partial HashAggregate  (cost=2467948843.80..2467948846.30 rows=200 width=36)"
-"                          Group Key: oi.order_id"
-"                          ->  Nested Loop  (cost=0.44..102298548.23 rows=473130059115 width=12)"
-"                                ->  Parallel Append  (cost=0.00..47344.76 rows=624653 width=4)"
-"                                      ->  Parallel Seq Scan on orders_202510 o_3  (cost=0.00..14906.65 rows=211549 width=4)"
-"                                            Filter: ((status)::text <> ALL ('{PLACED,RETURNED,CANCELLED}'::text[]))"
-"                                      ->  Parallel Seq Scan on orders_202808 o_1  (cost=0.00..14890.20 rows=208872 width=4)"
-"                                            Filter: ((status)::text <> ALL ('{PLACED,RETURNED,CANCELLED}'::text[]))"
-"                                      ->  Parallel Seq Scan on orders_202509 o_2  (cost=0.00..14424.65 rows=204232 width=4)"
-"                                            Filter: ((status)::text <> ALL ('{PLACED,RETURNED,CANCELLED}'::text[]))"
-"                                ->  Append  (cost=0.44..138.88 rows=2481 width=12)"
-"                                      ->  Index Scan using order_items_202808_order_id_idx on order_items_202808 oi_1  (cost=0.44..42.39 rows=840 width=12)"
-"                                            Index Cond: (order_id = o.order_id)"
-"                                      ->  Index Scan using order_items_202509_order_id_idx on order_items_202509 oi_2  (cost=0.44..41.84 rows=809 width=12)"
-"                                            Index Cond: (order_id = o.order_id)"
-"                                      ->  Index Scan using order_items_202510_order_id_idx on order_items_202510 oi_3  (cost=0.44..42.25 rows=832 width=12)"
-"                                            Index Cond: (order_id = o.order_id)"
+"Merge Append  (cost=1.72..1593721.90 rows=451694 width=12)"
+"  Sort Key: order_items.product_id"
+"  ->  Index Scan using order_items_202808_product_id_idx on order_items_202808 order_items_1  (cost=0.56..534413.63 rows=152020 width=12)"
+"        Index Cond: (product_id = ANY ('{10,630,999}'::integer[]))"
+"  ->  Index Scan using order_items_202509_product_id_idx on order_items_202509 order_items_2  (cost=0.56..518068.74 rows=147361 width=12)"
+"        Index Cond: (product_id = ANY ('{10,630,999}'::integer[]))"
+"  ->  Index Scan using order_items_202510_product_id_idx on order_items_202510 order_items_3  (cost=0.56..535401.44 rows=152313 width=12)"
+"        Index Cond: (product_id = ANY ('{10,630,999}'::integer[]))"
 "JIT:"
-"  Functions: 30"
+"  Functions: 12"
 "  Options: Inlining true, Optimization true, Expressions true, Deforming true"
 ```
-**Total rows: 151485743 | Query complete 00:03:33.784**
+**Total rows: 454458 | Query complete 00:01:10.462**
 
 ### 4. Find order with highest total_amount
 ```plantuml
